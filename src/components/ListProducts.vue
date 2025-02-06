@@ -1,18 +1,27 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 
 const searchWord = ref('');
+const searchCategory = ref('');
+const categories = ref([]);
 
 const props = defineProps({
   products: Array,
 });
 
 const filteredProducts = computed(() => {
-  return props.products.filter(product => product.name.toLowerCase().includes(searchWord.value.toLowerCase()));
+  return props.products.filter(product => {
+    return product.name.toLowerCase().includes(searchWord.value.toLowerCase())
+      && (searchCategory.value == "" || product.category == searchCategory.value)
+  });
 });
 
-defineEmits(['addToCart']);
+defineEmits(['addToCart', 'deleteProduct']);
 
+onMounted(async () => {
+  const res = await fetch('http://localhost:3000/api/categories');
+  categories.value = await res.json();
+});
 </script>
 
 <template>
@@ -20,6 +29,15 @@ defineEmits(['addToCart']);
   <p>
     Filtrar por 
     <input type="text" v-model="searchWord" />
+  </p>
+  <p>
+    Seleccionar categoría: 
+    <select v-model="searchCategory">
+      <option value="">Cualquier categoría</option>
+      <option v-for="(category,index) in categories" :key="index">
+        {{ category }}
+      </option>
+    </select>
   </p>
   <table>
     <thead>
@@ -32,13 +50,17 @@ defineEmits(['addToCart']);
       </tr>
     </thead>
     <tbody>
-      <tr v-for="product in filteredProducts" :key="product.id">
+      <tr v-for="product in filteredProducts" 
+          :key="product.id"
+          :class="{warning: product.category == 'Alcoholic'}"
+      >
         <td>{{ product.id }}</td>
         <td>{{ product.category }}</td>
         <td>{{ product.name }}</td>
         <td>{{ product.price }}</td>
         <td>
           <button @click="$emit('addToCart',product.id)">Añadir al carrito</button>
+          <button @click="$emit('deleteProduct', product.id)">Elimninar Producto</button>
         </td>
       </tr>
     </tbody>
@@ -67,5 +89,14 @@ th {
 tr:nth-child(even) {
   background-color: lightgray;
 }
+
+tr.warning {
+  background-color: #ff6666;
+}
+
+tr.warning:nth-child(even) {
+  background-color: #ff9999;
+}
+
 
 </style>
